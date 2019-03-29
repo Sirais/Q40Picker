@@ -37,24 +37,28 @@ namespace Q40Picker
                 return; // No key pressed just leave
 
             LogMessage($"Picker: Hotkey ({Settings.Hotkey.Value.ToString()}) toggled, Running Q40 Picker", 1);
-
-            if (!GameController.Game.IngameState.ServerData.StashPanel.IsVisible) // ch: No Gems without open Stash
+            if (!GameController.Game.IngameState.IngameUi.StashElement.IsVisible)
             {
                 LogMessage($"No Open Stash -> leaving ", 1);
                 KeyboardHelper.KeyPress(Settings.Hotkey.Value);
                 return;
             }
 
-            List<setData> gems = getQualityGems();
-            LogMessage($"Picker: found  {gems.Count} Quality Items in open stash.", 1);
-            if (gems == null || gems.Count == 0)
+            List<setData> hits; 
+            if (!Settings.UseFlask)
+                hits = getQualityGems();
+            else
+                hits = getQualityFlasks();
+
+            LogMessage($"Picker: found  {hits.Count} Quality Items in open stash.", 1);
+            if (hits == null || hits.Count == 0)
             {
-                LogMessage("No Quality gems found ", 1);
+                LogMessage("No Quality Items found ", 1);
                 KeyboardHelper.KeyPress(Settings.Hotkey.Value);
                 return;
             }
 
-            SetFinder Sets = new SetFinder(gems, 40); 
+            SetFinder Sets = new SetFinder(hits, 40); 
 
 
             if (Sets.BestSet == null)
@@ -70,7 +74,6 @@ namespace Q40Picker
             KeyboardHelper.KeyPress(Settings.Hotkey.Value); // send the hotkey back to the system to turn off the Work
 
         }
-
 
         // Displays found set as  Logmessage. Just for debugging 
         private void displaySet(SetFinder Sets)
@@ -119,27 +122,24 @@ namespace Q40Picker
         }
 
 
-
-
         public override void Initialise()
         {
             PluginName = "Auto Q40Picker";
         }
 
-        /// <summary>
-        /// Fetches a list of Quality gems from current open inventory
+        /// <summary>inventory
         /// </summary>
         /// <returns></returns>
         private List<setData> getQualityGems()
         {
             List<setData> res = new List<setData>();
-            var stashPanel = GameController.Game.IngameState.ServerData.StashPanel;
+            var stashPanel = GameController.Game.IngameState.IngameUi.StashElement;
             if (!stashPanel.IsVisible)
                 return null;
             var visibleStash = stashPanel.VisibleStash;
             if (visibleStash == null)
                 return null;
-            List<NormalInventoryItem> inventoryItems = GameController.Game.IngameState.ServerData.StashPanel.VisibleStash.VisibleInventoryItems;
+            List<NormalInventoryItem> inventoryItems = GameController.Game.IngameState.IngameUi.StashElement.VisibleStash.VisibleInventoryItems;
             foreach (NormalInventoryItem item in inventoryItems)
             {
                 var baseItemType = BasePlugin.API.GameController.Files.BaseItemTypes.Translate(item.Item.Path);
@@ -154,6 +154,31 @@ namespace Q40Picker
             }
             return res;
         }
+
+        private List<setData> getQualityFlasks()
+        {
+            List<setData> res = new List<setData>();
+            var stashPanel = GameController.Game.IngameState.IngameUi.StashElement;
+            if (!stashPanel.IsVisible)
+                return null;
+            var visibleStash = stashPanel.VisibleStash;
+            if (visibleStash == null)
+                return null;
+            List<NormalInventoryItem> inventoryItems = GameController.Game.IngameState.IngameUi.StashElement.VisibleStash.VisibleInventoryItems;
+            foreach (NormalInventoryItem item in inventoryItems)
+            {
+                var baseItemType = BasePlugin.API.GameController.Files.BaseItemTypes.Translate(item.Item.Path);
+                if (baseItemType.ClassName.Contains("Flask"))
+                {
+                    int Quality = item.Item.GetComponent<Quality>().ItemQuality;
+                    if (Quality > 0)
+                        if (Quality <= Settings.MaxGemQuality)
+                            res.Add(new QualityGem(item, Quality));
+                }
+            }
+            return res;
+        }
+
 
     }
 

@@ -19,15 +19,19 @@ namespace Q40Picker
         [Menu("Extra Delay between Pickup Klicks")]
         public RangeNode<int> ExtraDelay { get; set; }
 
+        [Menu("Use Flasks instead of Gems")]
+        public ToggleNode UseFlask { get; set; }
+
 
         public Q40PickerSettings()
         {
             //plugin 
             Enable = false;
             Hotkey = Keys.NumPad8;
-            MaxGemQuality = new RangeNode<int> (18, 1, 18);
-            MaxGemLevel = new RangeNode<int>(18, 1, 18);
+            MaxGemQuality = new RangeNode<int> (18, 1, 19);
+            MaxGemLevel = new RangeNode<int>(18, 1, 19);
             ExtraDelay = new RangeNode<int>(100, 1, 1000);
+            UseFlask = new ToggleNode(false); 
         }
     }
 }
