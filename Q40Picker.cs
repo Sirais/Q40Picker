@@ -1,25 +1,18 @@
 ﻿using System;
-using System.Threading.Tasks;
 using System.Collections.Generic;
-using PoeHUD.Controllers;
-using PoeHUD.Models;
-using PoeHUD.Models.Interfaces;
-using PoeHUD.Plugins;
-using PoeHUD.Poe.Elements;
-using PoeHUD.Poe;
-using PoeHUD.Poe.Components;
-using PoeHUD.Poe.RemoteMemoryObjects;
 using SharpDX;
-using System.Diagnostics;
-using System.IO;
 using System.Threading;
-using ImGuiNET;
-using ImVector2 = System.Numerics.Vector2;
-using ImVector4 = System.Numerics.Vector4;
-using Vector4 = SharpDX.Vector4;
 using Druzil.Poe.Libs;
-using PoeHUD.Framework;
-using PoeHUD.Framework.Helpers;
+using ExileCore;
+using ExileCore.PoEMemory.Components;
+using ExileCore.PoEMemory.Elements;
+using ExileCore.PoEMemory.Elements.InventoryElements;
+using ExileCore.PoEMemory.MemoryObjects;
+using ExileCore.PoEMemory.Models;
+using ExileCore.Shared;
+using ExileCore.Shared.Abstract;
+using ExileCore.Shared.Enums;
+using ExileCore.Shared.Helpers;
 
 
 
@@ -27,7 +20,26 @@ namespace Q40Picker
 {
     internal class Q40Picker : BaseSettingsPlugin<Q40PickerSettings>
     {
-        public override void Render()
+
+        private IngameUIElements ingameUI;
+
+
+        public override void OnLoad()
+        {
+        }
+
+        public override bool Initialise()
+        {
+            //PluginName = "Q40Picker";
+            ingameUI = GameController.IngameState.IngameUi;
+            return true;
+        }
+
+        public override void AreaChange(AreaInstance area) => ingameUI = GameController.IngameState.IngameUi;
+
+
+
+    public override void Render()
         {
             base.Render();
             if (!Settings.Enable.Value) // Plugin enabled = 
@@ -45,21 +57,20 @@ namespace Q40Picker
             }
 
             List<setData> hits; 
-            if (!Settings.UseFlask)
-                hits = getQualityGems();
-            else
-                hits = getQualityFlasks();
+            hits = getQualityType("Skill Gem"); // Try to find gems
+            if (hits == null || hits.Count == 0) 
+                hits = getQualityType("Flask"); //No gems so try flasks
 
-            LogMessage($"Picker: found  {hits.Count} Quality Items in open stash.", 1);
+            
             if (hits == null || hits.Count == 0)
             {
                 LogMessage("No Quality Items found ", 1);
                 KeyboardHelper.KeyPress(Settings.Hotkey.Value);
                 return;
             }
+            LogMessage($"Picker: found  {hits.Count} Quality Items in open stash.", 1);
 
             SetFinder Sets = new SetFinder(hits, 40); 
-
 
             if (Sets.BestSet == null)
             {
@@ -67,7 +78,6 @@ namespace Q40Picker
                 KeyboardHelper.KeyPress(Settings.Hotkey.Value);
                 return;
             }
-
 
             pickup(Sets);
 
@@ -122,15 +132,12 @@ namespace Q40Picker
         }
 
 
-        public override void Initialise()
-        {
-            PluginName = "Auto Q40Picker";
-        }
 
         /// <summary>inventory
+        /// "Skill Gem"
         /// </summary>
         /// <returns></returns>
-        private List<setData> getQualityGems()
+        private List<setData> getQualityType(string itemtype)
         {
             List<setData> res = new List<setData>();
             var stashPanel = GameController.Game.IngameState.IngameUi.StashElement;
@@ -139,46 +146,21 @@ namespace Q40Picker
             var visibleStash = stashPanel.VisibleStash;
             if (visibleStash == null)
                 return null;
-            List<NormalInventoryItem> inventoryItems = GameController.Game.IngameState.IngameUi.StashElement.VisibleStash.VisibleInventoryItems;
+            IList<NormalInventoryItem> inventoryItems = ingameUI.StashElement.VisibleStash.VisibleInventoryItems;
             foreach (NormalInventoryItem item in inventoryItems)
             {
-                var baseItemType = BasePlugin.API.GameController.Files.BaseItemTypes.Translate(item.Item.Path);
-                if (baseItemType.ClassName.Contains("Skill Gem"))
+                BaseItemType baseItemType = GameController.Files.BaseItemTypes.Translate(item.Item.Path);
+
+                if (baseItemType.ClassName.Contains(itemtype))
                 {
                     int Quality = item.Item.GetComponent<Quality>().ItemQuality;
                     if (Quality > 0)
                         if (Quality<= Settings.MaxGemQuality)
                             res.Add(new QualityGem( item,Quality));
-
                 }
             }
             return res;
         }
-
-        private List<setData> getQualityFlasks()
-        {
-            List<setData> res = new List<setData>();
-            var stashPanel = GameController.Game.IngameState.IngameUi.StashElement;
-            if (!stashPanel.IsVisible)
-                return null;
-            var visibleStash = stashPanel.VisibleStash;
-            if (visibleStash == null)
-                return null;
-            List<NormalInventoryItem> inventoryItems = GameController.Game.IngameState.IngameUi.StashElement.VisibleStash.VisibleInventoryItems;
-            foreach (NormalInventoryItem item in inventoryItems)
-            {
-                var baseItemType = BasePlugin.API.GameController.Files.BaseItemTypes.Translate(item.Item.Path);
-                if (baseItemType.ClassName.Contains("Flask"))
-                {
-                    int Quality = item.Item.GetComponent<Quality>().ItemQuality;
-                    if (Quality > 0)
-                        if (Quality <= Settings.MaxGemQuality)
-                            res.Add(new QualityGem(item, Quality));
-                }
-            }
-            return res;
-        }
-
 
     }
 

@@ -1,3 +1,5 @@
-config.ini
-*.pdb
-ErrorLog.txt
+obj/
+.vs/
+packages/
+bin/
+obj/

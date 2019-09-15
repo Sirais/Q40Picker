@@ -2,8 +2,7 @@
 using System.Runtime.InteropServices;
 using System.Threading;
 using SharpDX;
-
-using PoeHUD.Controllers;
+using ExileCore;
 using System.Windows.Forms;
 
 
